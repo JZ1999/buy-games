@@ -269,6 +269,8 @@ class Consoles(APIView):
             return "wii-u"
         if v.startswith("wii"):
             return "wii"
+        if "switch-2" in v:
+            return "switch-2"
         if v.startswith("switch"):
             return "switch"
         if "3ds-xl" in v:
@@ -317,6 +319,8 @@ class Consoles(APIView):
             return "nes"
         if "snes" in v or "super-famicom" in v:
             return "snes"
+        if "pc" in v:
+            return "pc"
         return "unknown"
 
     def get(self, request):
