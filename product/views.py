@@ -104,6 +104,21 @@ class ProductViewSet(viewsets.ModelViewSet, Throttling):
                 self.queryset = self.queryset.filter(accessory__isnull=False)
             if "collectable" in product_types:
                 self.queryset = self.queryset.filter(collectable__isnull=False)
+        # Support a `limit` query param to cap returned items (safe, senior-friendly)
+        limit_param = self.request.query_params.get('limit')
+        if limit_param is not None:
+            try:
+                limit = int(limit_param)
+            except (ValueError, TypeError):
+                limit = None
+
+            if limit is not None:
+                MAX_LIMIT = 20
+                if limit < 0:
+                    limit = 0
+                limit = min(limit, MAX_LIMIT)
+                return self.queryset[:limit]
+
         return self.queryset
 
     def retrieve(self, request, *args, **kwargs):
