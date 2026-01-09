@@ -258,10 +258,10 @@ class Consoles(APIView):
             return "switch"
         if "3ds-xl" in v:
             return "3ds-xl"
-        if v.startswith("3ds"):
+        if v.startswith("3ds") or v.startswith("new-3ds"):
             return "3ds"
         if "dsi" in v:
-            return "dsi"
+            return "ds-i"
         if "2ds" in v:
             return "2ds"
         if v.startswith("ds") or v.startswith("ds"):
@@ -284,7 +284,7 @@ class Consoles(APIView):
             if "one" in v:
                 return "xbox-one"
             return "xbox"
-        if "genesis" in v:
+        if "genesis" in v or "sega-master-system" in v:
             return "genesis"
         if "nomad" in v:
             return "nomad"
@@ -298,11 +298,11 @@ class Consoles(APIView):
             return "atari-2600"
         if "n64" in v:
             return "n64"
-        if "nes" in v:
+        if "nes" in v or "famicom" in v:
             return "nes"
         if "snes" in v or "super-famicom" in v:
             return "snes"
-        return v.split("-")[0]
+        return "unknown"
 
     def get(self, request):
         base = "/static/assets/console-logos/"
@@ -310,7 +310,7 @@ class Consoles(APIView):
         seen = set()
         for v, l in ConsoleEnum.choices:
             logo = self.console_logo_name(v)
-            if logo in seen:
+            if logo in seen or logo == "unknown":
                 continue
             seen.add(logo)
             data.append({"value": v, "label": l, "image": f"{base}{logo}.svg"})
