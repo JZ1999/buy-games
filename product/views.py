@@ -21,7 +21,7 @@ from collections import defaultdict
 from possimplified.serializer import ProductPOSSimplifiedSerializer
 from product.filters import TypeFilter
 from product.models import Product, Collectable, VideoGame, Accessory, Report, StateEnum, Sale, Tag, ProductTypeEnum, ConsoleEnum
-from product.serializer import ProductSerializer, CollectableSerializer, VideoGameSerializer, AccessorySerializer, \
+from product.serializer import ProductSerializer, CollectableSerializer, TagsSerializer, VideoGameSerializer, AccessorySerializer, \
     ReportSerializer, ProductStateByIdSerializer
 from datetime import datetime
 
@@ -170,6 +170,12 @@ class VideoGameViewSet(viewsets.ModelViewSet, Throttling):
 class AccessoryViewSet(viewsets.ModelViewSet, Throttling):
     queryset = Accessory.objects.filter()
     serializer_class = AccessorySerializer
+    permission_classes = []
+
+
+class TagsViewSet(viewsets.ReadOnlyModelViewSet, Throttling):
+    queryset = Tag.objects.filter(internal=False)
+    serializer_class = TagsSerializer
     permission_classes = []
 
 

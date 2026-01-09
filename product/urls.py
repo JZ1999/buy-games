@@ -4,12 +4,13 @@ from django.urls import path
 
 from rest_framework.routers import DefaultRouter
 
-from product.views import ProductViewSet, CollectableViewSet, VideoGameViewSet, AccessoryViewSet, ReportViewSet, \
+from product.views import ProductViewSet, CollectableViewSet, TagsViewSet, VideoGameViewSet, AccessoryViewSet, ReportViewSet, \
     DailySalesReport, GenerateExcelOfProducts, GenerateImageOfProducts, ProductStateView
 from product.views import Consoles
 
 router = DefaultRouter()
 router.register(r'reports', ReportViewSet)
+router.register(r'tags', TagsViewSet)
 
 urlpatterns = [
     path("products/excel", GenerateExcelOfProducts.as_view(), name="products-excel"),
