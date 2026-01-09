@@ -11,7 +11,7 @@ from django.contrib import admin
 from django.contrib.auth.models import Group
 from django.core.files.storage import DefaultStorage
 from django.core.files.uploadedfile import InMemoryUploadedFile
-from django.db import models
+from django.db import models, Sum
 import django.conf as conf
 import random
 
@@ -645,19 +645,22 @@ class Report(models.Model):
     def calculate_total(self):
         yesterday = date.today() - timedelta(days=1)
 
-        if self.date < yesterday:
+        if self.date < yesterday and self.total:
             return formatted_number(self.total)
-        total_value = sum([sale.net_total for sale in self.sale_set.exclude(Q(type=SaleTypeEnum.Pending) | Q(type=SaleTypeEnum.Cancelled) )])
+        
+        total_value = self.sale_set.exclude(Q(type=SaleTypeEnum.Pending) | Q(type=SaleTypeEnum.Cancelled)) \
+                               .aggregate(total=Sum('net_total'))['total'] or 0
         self.total = total_value
-        self.save()
+        self.save(update_fields=['total'])
+
         return formatted_number(total_value)
 
     def _calculate_total_for(self, owner: OwnerEnum, params):
         yesterday = date.today() - timedelta(days=1)
 
-        if self.date < yesterday:
-            return formatted_number(params['total'] if params['total'] else 0)
-
+        if self.date < yesterday and params.get('total'):
+            return formatted_number(params['total'])
+        
         field_keyword = 'payment__net_price'
 
         remaining_percentage = 0.9 if owner not in (OwnerEnum.Business, OwnerEnum.Consignacion) else 1
@@ -692,7 +695,7 @@ class Report(models.Model):
             # Add repairs and requests
         total_value = sum(list_of_all_products)
         setattr(self, params['field'], total_value)
-        self.save()
+        self.save(update_fields=[params['field']])
         return formatted_number(total_value)
 
     @property
