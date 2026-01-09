@@ -323,13 +323,24 @@ class Consoles(APIView):
             return "pc"
         return "unknown"
 
+
+    """
+    API view to get console types with their logos.
+
+    Query Parameters:
+    - one_per_console_type (optional): If set to "1", returns only one logo
+    """
     def get(self, request):
         base = "/static/assets/console-logos/"
+
+        param = request.query_params.get('one_per_console_type', '')
+        one_per_console_type = str(param) == "1" 
+
         data = []
         seen = set()
         for v, l in ConsoleEnum.choices:
             logo = self.console_logo_name(v)
-            if logo in seen or logo == "unknown":
+            if one_per_console_type and logo in seen or logo == "unknown":
                 continue
             seen.add(logo)
             data.append({"value": v, "label": l, "image": f"{base}{logo}.svg"})
