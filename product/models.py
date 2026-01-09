@@ -646,8 +646,8 @@ class Report(models.Model):
     def calculate_total(self):
         yesterday = date.today() - timedelta(days=1)
 
-        #if self.date < yesterday and self.total:
-        #    return formatted_number(self.total)
+        if self.date < yesterday and self.total:
+            return formatted_number(self.total)
         
         total_value = self.sale_set.exclude(Q(type=SaleTypeEnum.Pending) | Q(type=SaleTypeEnum.Cancelled)) \
                                .aggregate(total=Sum('net_total'))['total'] or 0
@@ -659,8 +659,8 @@ class Report(models.Model):
     def _calculate_total_for(self, owner: OwnerEnum, params):
         yesterday = date.today() - timedelta(days=1)
 
-        #if self.date < yesterday and params.get('total'):
-        #    return formatted_number(params['total'])
+        if self.date < yesterday and params.get('total'):
+            return formatted_number(params['total'])
         
         field_keyword = 'payment__net_price'
 

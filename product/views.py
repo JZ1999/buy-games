@@ -221,8 +221,100 @@ class ReportViewSet(viewsets.ModelViewSet, Throttling):
 
 class Consoles(APIView):
     permission_classes = []
+
+    LOGOS = {
+        "atari-2600","n64","nes","snes","ps1","ps2","ps3","ps4","ps5","psp","ps-vita","gc",
+        "wii","wii-u","switch","nds","nds-i","2ds","3ds","3ds-xl","gb","gba","gba-sp","gbc",
+        "gb-pocket","xbox","xbox-360","xbox-one","xbox-series","genesis","nomad","saturn","dreamcast",
+        "game-gear"
+    }
+
+    @staticmethod
+    def console_logo_name(value: str) -> str:
+        v = value.lower()
+        if v in Consoles.LOGOS:
+            return v
+        if v.startswith("ps2"):
+            return "ps2"
+        if v.startswith("ps3"):
+            return "ps3"
+        if v.startswith("ps4"):
+            return "ps4"
+        if v.startswith("ps5"):
+            return "ps5"
+        if v.startswith("psp"):
+            return "psp"
+        if "psvita" in v or "ps-vita" in v:
+            return "ps-vita"
+        if v.startswith("ps1") or v == "psone":
+            return "ps1"
+        if v.startswith("gamecube") or v.startswith("gc"):
+            return "gc"
+        if "wii-u" in v or "wiiu" in v:
+            return "wii-u"
+        if v.startswith("wii"):
+            return "wii"
+        if v.startswith("switch"):
+            return "switch"
+        if "3ds-xl" in v:
+            return "3ds-xl"
+        if v.startswith("3ds"):
+            return "3ds"
+        if "dsi" in v:
+            return "dsi"
+        if "2ds" in v:
+            return "2ds"
+        if v.startswith("ds") or v.startswith("ds"):
+            return "ds"
+        if v.startswith("gameboy"):
+            if "pocket" in v:
+                return "gb-pocket"
+            if "advanced-sp" in v or "gba-sp" in v:
+                return "gba-sp"
+            if "advanced" in v or "gba" in v:
+                return "gba"
+            if "color" in v or "gbc" in v:
+                return "gbc"
+            return "gb"
+        if v.startswith("xbox"):
+            if "360" in v:
+                return "xbox-360"
+            if "series" in v:
+                return "xbox-series"
+            if "one" in v:
+                return "xbox-one"
+            return "xbox"
+        if "genesis" in v:
+            return "genesis"
+        if "nomad" in v:
+            return "nomad"
+        if "saturn" in v:
+            return "saturn"
+        if "dreamcast" in v:
+            return "dreamcast"
+        if "game-gear" in v or "gamegear" in v:
+            return "game-gear"
+        if "atari" in v:
+            return "atari-2600"
+        if "n64" in v:
+            return "n64"
+        if "nes" in v:
+            return "nes"
+        if "snes" in v or "super-famicom" in v:
+            return "snes"
+        return v.split("-")[0]
+
     def get(self, request):
-        return Response([{"code": v, "name": n} for v, n in ConsoleEnum.choices])
+        base = "/static/assets/console-logos/"
+        data = []
+        seen = set()
+        for v, l in ConsoleEnum.choices:
+            logo = self.console_logo_name(v)
+            if logo in seen:
+                continue
+            seen.add(logo)
+            data.append({"value": v, "label": l, "image": f"{base}{logo}.svg"})
+        return Response(data)
 
 
 class GenerateExcelOfProducts(APIView):
