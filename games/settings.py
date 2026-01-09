@@ -73,7 +73,7 @@ CORS_ALLOWED_ORIGINS = [
 
     # Testing origins
     "http://localhost:5173",
-    "https://readygames-store.vercel.app/",
+    "https://readygames-store.vercel.app",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
