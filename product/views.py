@@ -269,7 +269,7 @@ class Consoles(APIView):
             return "wii-u"
         if v.startswith("wii"):
             return "wii"
-        if "switch-2" in v:
+        if "switch2" in v:
             return "switch-2"
         if v.startswith("switch"):
             return "switch"
