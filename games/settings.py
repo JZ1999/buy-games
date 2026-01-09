@@ -67,9 +67,8 @@ ALLOWED_HOSTS = env("ALLOWED_HOSTS").split(",")
 CORS_ALLOWED_ORIGINS = [
     "https://readygamescr.com",
     "https://www.readygamescr.com",
-    "http://localhost:3000",
+    "http://localhost:5173",
     "https://ready-games-ui.vercel.app",
-    "https://readygames-eight.vercel.app",
     "https://store.readygamescr.com",
     "https://www.store.readygamescr.com",
 ]

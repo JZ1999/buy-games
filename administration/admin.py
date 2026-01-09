@@ -182,4 +182,11 @@ admin_site.register(Coupon, CouponAdmin)
 admin_site.register(Client, ClientAdmin)
 admin_site.register(Location, LocationAdmin)
 admin_site.register(Setting, SettingsAdmin)
-admin_site.register(News)
+class NewsAdmin(admin.ModelAdmin):
+    model = News
+    list_display = ("__str__", "active", "is_carousel", "creation_date")
+    list_filter = ("active", "is_carousel")
+    search_fields = ("title", "description")
+
+
+admin_site.register(News, NewsAdmin)

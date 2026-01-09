@@ -13,6 +13,13 @@ import requests
 
 from games.utils.storage_backends import PrivateMediaStorage
 from product.models import ProviderEnum
+from django.core.exceptions import ValidationError
+from django.db import transaction
+
+# limits
+VIDEO_MAX_SIZE = int(18 * 1024 * 1024)  # 18 MB
+ACTIVE_NON_CAROUSEL_LIMIT = 4
+# no raw SQL/advisory locks: use ORM + transactions on create
 
 
 class RequestStateEnum(models.TextChoices):
@@ -212,7 +219,47 @@ class News(models.Model):
                 None
             )
 
+    def validate_video_size(self):
+        """Raise ValidationError if `video` exceeds `VIDEO_MAX_SIZE`.
+
+        This is called from `save()` to provide immediate, clear validation
+        when creating or updating a `News` instance.
+        """
+        if not self.video:
+            return
+
+        try:
+            size = getattr(self.video, 'size', None)
+        except Exception:
+            size = None
+
+        if size is not None and size > VIDEO_MAX_SIZE:
+            raise ValidationError({
+                'video': f"Video exceeds maximum allowed size of {VIDEO_MAX_SIZE} bytes ({VIDEO_MAX_SIZE/1024/1024:.1f} MB)."
+            })
+
     def save(self, *args, **kwargs):
-        # Optimize image before saving (same threshold as product images)
+        # Validate video size early and raise a proper ValidationError
+        self.validate_video_size()
+
+        # Run model validation (includes other checks)
+        self.full_clean()
+
+        # Only enforce the "max active non-carousel" rule when creating a new News item
+        is_create = self.pk is None
+        if is_create and self.active and not self.is_carousel:
+            # Transactional check using ORM + select_for_update to reduce race windows.
+            with transaction.atomic():
+                count = News.objects.select_for_update().filter(active=True, is_carousel=False).count()
+                if count >= ACTIVE_NON_CAROUSEL_LIMIT:
+                    raise ValidationError({
+                        '__all__': f"There can be at most {ACTIVE_NON_CAROUSEL_LIMIT} active non-carousel news items (current: {count})."
+                    })
+                # safe to optimize and save inside the same transaction
+                self.optimize_image()
+                super().save(*args, **kwargs)
+                return
+
+        # Default path (updates or non-limited cases)
         self.optimize_image()
         super().save(*args, **kwargs)
