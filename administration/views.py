@@ -198,10 +198,7 @@ class NewsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = []
 
     def list(self, request, *args, **kwargs):
-        initial_qs = self.queryset.filter(is_carousel=False).order_by('-creation_date')[:4]
-        carousel_qs = self.queryset.filter(is_carousel=True).order_by('-creation_date')
-
-        initial = self.get_serializer(initial_qs, many=True, context={"request": request}).data
-        carousel = self.get_serializer(carousel_qs, many=True, context={"request": request}).data
-
-        return Response({"initial": initial, "carousel": carousel})
+        # Return up to 4 active news items ordered by creation date (most recent first)
+        qs = self.queryset.order_by('-creation_date')[:4]
+        data = self.get_serializer(qs, many=True, context={"request": request}).data
+        return Response(data)

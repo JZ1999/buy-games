@@ -14,12 +14,10 @@ import requests
 from games.utils.storage_backends import PrivateMediaStorage
 from product.models import ProviderEnum
 from django.core.exceptions import ValidationError
-from django.db import transaction
+
 
 # limits
 VIDEO_MAX_SIZE = int(18 * 1024 * 1024)  # 18 MB
-ACTIVE_NON_CAROUSEL_LIMIT = 4
-# no raw SQL/advisory locks: use ORM + transactions on create
 
 
 class RequestStateEnum(models.TextChoices):
@@ -159,7 +157,6 @@ class News(models.Model):
     """Represents a news item displayed on the homepage.
 
     - Either `image` or `video` can be set (prefer image for small media).
-    - `is_carousel` marks whether the item belongs in the secondary/carousel area.
     - Image optimization reuses the project's WEBP conversion logic when image > 500KB.
     """
     title = models.CharField(max_length=200, blank=True, default="")
@@ -180,9 +177,6 @@ class News(models.Model):
     # Optional clickable URL for news items (frontend can open this when the item is clicked)
     link = models.URLField(max_length=500, null=True, blank=True)
 
-    # When True it will be part of the carousel (secondary scroller). On homepage initial grid
-    # the site shows at most 4 items (front-end enforces this). Use `order` for manual ordering.
-    is_carousel = models.BooleanField(default=False)
     active = models.BooleanField(default=True)
 
     creation_date = models.DateTimeField(auto_now_add=True)
@@ -192,7 +186,7 @@ class News(models.Model):
         ordering = ("-creation_date",)
         verbose_name = "Noticia"
         verbose_name_plural = "Noticias"
-        indexes = [models.Index(fields=['is_carousel']), models.Index(fields=['-creation_date'])]
+        indexes = [models.Index(fields=['-creation_date'])]
 
     def __str__(self):
         return self.title or f"News #{self.pk}"
@@ -244,22 +238,6 @@ class News(models.Model):
 
         # Run model validation (includes other checks)
         self.full_clean()
-
-        # Only enforce the "max active non-carousel" rule when creating a new News item
-        is_create = self.pk is None
-        if is_create and self.active and not self.is_carousel:
-            # Transactional check using ORM + select_for_update to reduce race windows.
-            with transaction.atomic():
-                count = News.objects.select_for_update().filter(active=True, is_carousel=False).count()
-                if count >= ACTIVE_NON_CAROUSEL_LIMIT:
-                    raise ValidationError({
-                        '__all__': f"There can be at most {ACTIVE_NON_CAROUSEL_LIMIT} active non-carousel news items (current: {count})."
-                    })
-                # safe to optimize and save inside the same transaction
-                self.optimize_image()
-                super().save(*args, **kwargs)
-                return
-
-        # Default path (updates or non-limited cases)
+        # Default save path: optimize image and persist
         self.optimize_image()
         super().save(*args, **kwargs)

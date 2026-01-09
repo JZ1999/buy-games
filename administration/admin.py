@@ -184,8 +184,8 @@ admin_site.register(Location, LocationAdmin)
 admin_site.register(Setting, SettingsAdmin)
 class NewsAdmin(admin.ModelAdmin):
     model = News
-    list_display = ("__str__", "active", "is_carousel", "creation_date")
-    list_filter = ("active", "is_carousel")
+    list_display = ("__str__", "active", "creation_date")
+    list_filter = ("active",)
     search_fields = ("title", "description")
 
 

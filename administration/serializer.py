@@ -17,4 +17,4 @@ class ClientSerializer(serializers.ModelSerializer):
 class NewsSerializer(serializers.ModelSerializer):
     class Meta:
         model = News
-        fields = ('id', 'title', 'description', 'image', 'video', 'link', 'is_carousel', 'active', 'creation_date')
+        fields = ('id', 'title', 'description', 'image', 'video', 'link', 'active', 'creation_date')
