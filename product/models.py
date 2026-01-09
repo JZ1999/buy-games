@@ -11,7 +11,8 @@ from django.contrib import admin
 from django.contrib.auth.models import Group
 from django.core.files.storage import DefaultStorage
 from django.core.files.uploadedfile import InMemoryUploadedFile
-from django.db import models, Sum
+from django.db import models
+from django.db.models import Sum
 import django.conf as conf
 import random
 
