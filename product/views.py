@@ -20,7 +20,7 @@ from collections import defaultdict
 
 from possimplified.serializer import ProductPOSSimplifiedSerializer
 from product.filters import TypeFilter
-from product.models import Product, Collectable, VideoGame, Accessory, Report, StateEnum, Sale, Tag, ProductTypeEnum
+from product.models import Product, Collectable, VideoGame, Accessory, Report, StateEnum, Sale, Tag, ProductTypeEnum, ConsoleEnum
 from product.serializer import ProductSerializer, CollectableSerializer, VideoGameSerializer, AccessorySerializer, \
     ReportSerializer, ProductStateByIdSerializer
 from datetime import datetime
@@ -217,6 +217,12 @@ class ReportViewSet(viewsets.ModelViewSet, Throttling):
             queryset = queryset.filter(date=date_param)
 
         return queryset.annotate(total_products=Sum('sale__products__sale_price'))
+
+
+class Consoles(APIView):
+    permission_classes = []
+    def get(self, request):
+        return Response([{"code": v, "name": n} for v, n in ConsoleEnum.choices])
 
 
 class GenerateExcelOfProducts(APIView):

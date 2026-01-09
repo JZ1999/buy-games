@@ -6,6 +6,7 @@ from rest_framework.routers import DefaultRouter
 
 from product.views import ProductViewSet, CollectableViewSet, VideoGameViewSet, AccessoryViewSet, ReportViewSet, \
     DailySalesReport, GenerateExcelOfProducts, GenerateImageOfProducts, ProductStateView
+from product.views import Consoles
 
 router = DefaultRouter()
 router.register(r'reports', ReportViewSet)
@@ -20,6 +21,7 @@ urlpatterns = [
     path("video-game/", VideoGameViewSet.as_view({"post": "create", "get": "list"})),
     path("accessory/", AccessoryViewSet.as_view({"post": "create", "get": "list"})),
     path('sales/', DailySalesReport.as_view(), name='daily-sales-report'),
+    path('consoles/', Consoles.as_view(), name='consoles-list'),
 
 ]
 urlpatterns += router.urls

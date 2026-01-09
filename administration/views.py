@@ -6,13 +6,13 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from administration.models import Coupon, Client, Setting
-from administration.serializer import CouponSerializer, ClientSerializer
+from administration.models import Coupon, Client, Setting, News
+from administration.serializer import CouponSerializer, ClientSerializer, NewsSerializer
 from product.views import Throttling
 
 import requests
 from rest_framework.views import APIView
-from rest_framework import status
+from rest_framework import status, viewsets
 from django.conf import settings
 
 class CouponViewSet(viewsets.ModelViewSet, Throttling):
@@ -187,3 +187,21 @@ class CapturePaymentIntent(APIView):
         except requests.exceptions.RequestException as e:
             print(e)
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class NewsViewSet(viewsets.ReadOnlyModelViewSet):
+    """Read-only viewset that returns `initial` (up to 4 non-carousel items)
+    and `carousel` items in the `list` action.
+    """
+    queryset = News.objects.filter(active=True)
+    serializer_class = NewsSerializer
+    permission_classes = []
+
+    def list(self, request, *args, **kwargs):
+        initial_qs = self.queryset.filter(is_carousel=False).order_by('-creation_date')[:4]
+        carousel_qs = self.queryset.filter(is_carousel=True).order_by('-creation_date')
+
+        initial = self.get_serializer(initial_qs, many=True, context={"request": request}).data
+        carousel = self.get_serializer(carousel_qs, many=True, context={"request": request}).data
+
+        return Response({"initial": initial, "carousel": carousel})

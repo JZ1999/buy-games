@@ -2,9 +2,10 @@ from django.urls import path
 
 from rest_framework.routers import DefaultRouter
 
-from administration.views import CouponViewSet, ClientViewSet, CreatePaymentIntent, CreateCustomer, CreatePaymentMethod, ConfirmPaymentIntent
+from administration.views import CouponViewSet, ClientViewSet, CreatePaymentIntent, CreateCustomer, CreatePaymentMethod, ConfirmPaymentIntent, NewsViewSet
 
 router = DefaultRouter()
+router.register(r'news', NewsViewSet, basename='news')
 
 urlpatterns = [
     path("coupon/<str:code>/", CouponViewSet.as_view({"get": "retrieve"})),

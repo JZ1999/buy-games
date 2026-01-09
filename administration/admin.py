@@ -9,7 +9,7 @@ from django.utils.html import format_html
 from django.contrib import messages
 
 
-from administration.models import Request, RequestStateEnum, Coupon, Client, Location, Setting
+from administration.models import Request, RequestStateEnum, Coupon, Client, Location, Setting, News
 from games.admin import admin_site
 from product.models import Sale
 from ui.views import SendMailError
@@ -182,3 +182,4 @@ admin_site.register(Coupon, CouponAdmin)
 admin_site.register(Client, ClientAdmin)
 admin_site.register(Location, LocationAdmin)
 admin_site.register(Setting, SettingsAdmin)
+admin_site.register(News)

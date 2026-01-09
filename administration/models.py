@@ -1,8 +1,12 @@
 import random
+import sys
 from datetime import datetime
+from io import BytesIO
 
+from PIL import Image
 from django.conf import settings
 from django.core.files.storage import DefaultStorage
+from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.db import models
 from bs4 import BeautifulSoup
 import requests
@@ -142,3 +146,73 @@ class Setting(models.Model):
 
     def __str__(self):
         return "Configuraciones"
+
+
+class News(models.Model):
+    """Represents a news item displayed on the homepage.
+
+    - Either `image` or `video` can be set (prefer image for small media).
+    - `is_carousel` marks whether the item belongs in the secondary/carousel area.
+    - Image optimization reuses the project's WEBP conversion logic when image > 500KB.
+    """
+    title = models.CharField(max_length=200, blank=True, default="")
+    description = models.TextField(blank=True, null=True)
+    image = models.ImageField(
+        upload_to='news/photos/',
+        null=True,
+        blank=True,
+        storage=DefaultStorage() if not settings.S3_ENABLED else PrivateMediaStorage()
+    )
+    video = models.FileField(
+        upload_to='news/videos/',
+        null=True,
+        blank=True,
+        storage=DefaultStorage() if not settings.S3_ENABLED else PrivateMediaStorage()
+    )
+
+    # Optional clickable URL for news items (frontend can open this when the item is clicked)
+    link = models.URLField(max_length=500, null=True, blank=True)
+
+    # When True it will be part of the carousel (secondary scroller). On homepage initial grid
+    # the site shows at most 4 items (front-end enforces this). Use `order` for manual ordering.
+    is_carousel = models.BooleanField(default=False)
+    active = models.BooleanField(default=True)
+
+    creation_date = models.DateTimeField(auto_now_add=True)
+    modification_date = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-creation_date",)
+        verbose_name = "Noticia"
+        verbose_name_plural = "Noticias"
+        indexes = [models.Index(fields=['is_carousel']), models.Index(fields=['-creation_date'])]
+
+    def __str__(self):
+        return self.title or f"News #{self.pk}"
+
+    def optimize_image(self):
+        """Convert heavy images to WEBP (same logic used by `product.Product.optimize_image`)."""
+        if self.image and getattr(self.image, 'size', 0) > 500 * 1024:  # 500 KB
+            img = Image.open(self.image)
+
+            # Convert to RGB if it's a .png or has alpha channel
+            if img.mode in ("RGBA", "P"):
+                img = img.convert("RGB")
+
+            output = BytesIO()
+            img.save(output, format='WEBP', quality=30)
+            output.seek(0)
+
+            self.image = InMemoryUploadedFile(
+                output,
+                'ImageField',
+                f"{self.image.name.split('.')[0]}.webp",
+                'image/webp',
+                sys.getsizeof(output),
+                None
+            )
+
+    def save(self, *args, **kwargs):
+        # Optimize image before saving (same threshold as product images)
+        self.optimize_image()
+        super().save(*args, **kwargs)

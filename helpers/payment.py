@@ -7,6 +7,7 @@ class PaymentMethodEnum(models.TextChoices):
     tasa = "tasa 0", "T0"
     card = "card", "Card"
     cash = "cash", "Cash"
+    sinpe = "sinpe", "Sinpe"
     na = "na", "N/A"
 
 

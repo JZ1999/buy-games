@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from administration.models import Coupon, Client
+from administration.models import Coupon, Client, News
 
 
 class CouponSerializer(serializers.ModelSerializer):
@@ -12,3 +12,9 @@ class ClientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Client
         fields = '__all__'
+
+
+class NewsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = News
+        fields = ('id', 'title', 'description', 'image', 'video', 'link', 'is_carousel', 'active', 'creation_date')
