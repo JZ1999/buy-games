@@ -6,7 +6,7 @@ from io import BytesIO
 from tempfile import NamedTemporaryFile
 from PIL import Image, ImageDraw, ImageFont
 
-from django.db.models import Sum, Count, IntegerField, Q, Case, When
+from django.db.models import Sum, Count, IntegerField, Q, Case, When, Min
 from openpyxl.styles import Font
 from openpyxl.utils import get_column_letter
 from openpyxl.workbook import Workbook
@@ -20,7 +20,7 @@ from collections import defaultdict
 
 from possimplified.serializer import ProductPOSSimplifiedSerializer
 from product.filters import TypeFilter
-from product.models import Product, Collectable, VideoGame, Accessory, Report, StateEnum, Sale, Tag, ProductTypeEnum, ConsoleEnum
+from product.models import Product, Collectable, VideoGame, Accessory, Report, StateEnum, Sale, Tag, ProductTypeEnum, Console, ConsoleEnum
 from product.serializer import ProductSerializer, CollectableSerializer, TagsSerializer, VideoGameSerializer, AccessorySerializer, \
     ReportSerializer, ProductStateByIdSerializer
 from datetime import datetime
@@ -65,9 +65,18 @@ class ProductViewSet(viewsets.ModelViewSet, Throttling):
         product_types = self.request.query_params.get('types')
         search_query = self.request.query_params.get('q')
         order_by = self.request.query_params.get('order_by', '-sale_price')
+
+        # Base filtering and ordering
         self.queryset = self.queryset.filter(hidden=False).order_by(order_by)
-        if not any([tags,consoles,product_types,search_query]):
-            return self.queryset
+
+        # Eager-load related objects used by the serializer to avoid N+1 queries
+        self.queryset = self.queryset.select_related('payment').prefetch_related(
+            'tags', 'videogame_set', 'replacement_set', 'console_set', 'collectable_set', 'accessory_set'
+        )
+
+        # If no filters requested, return distinct results immediately
+        if not any([tags, consoles, product_types, search_query]):
+            return self.queryset.distinct()
 
         if search_query:
             options_dict = defaultdict(list)
@@ -104,6 +113,42 @@ class ProductViewSet(viewsets.ModelViewSet, Throttling):
                 self.queryset = self.queryset.filter(accessory__isnull=False)
             if "collectable" in product_types:
                 self.queryset = self.queryset.filter(collectable__isnull=False)
+
+            # Reduce duplicates by selecting one representative product per "additional info" group.
+            # For each product type, compute the minimal product id per (title, console) group
+            # and restrict the queryset to those representative ids. This avoids per-row Python checks
+            # and multiple JOIN duplicates while remaining efficient (one aggregation query per type).
+            unique_ids = set()
+            if "accessory" in product_types:
+                accessory_first_ids = Accessory.objects.filter(product__hidden=False, product__state=StateEnum.available)\
+                    .values('title', 'console')\
+                    .annotate(first_id=Min('product__id'))\
+                    .values_list('first_id', flat=True)
+                unique_ids.update(list(accessory_first_ids))
+
+            if "videogame" in product_types:
+                videogame_first_ids = VideoGame.objects.filter(product__hidden=False, product__state=StateEnum.available)\
+                    .values('title', 'console')\
+                    .annotate(first_id=Min('product__id'))\
+                    .values_list('first_id', flat=True)
+                unique_ids.update(list(videogame_first_ids))
+
+            if "console" in product_types:
+                console_first_ids = Console.objects.filter(product__hidden=False, product__state=StateEnum.available)\
+                    .values('title')\
+                    .annotate(first_id=Min('product__id'))\
+                    .values_list('first_id', flat=True)
+                unique_ids.update(list(console_first_ids))
+
+            if "collectable" in product_types:
+                collectable_first_ids = Collectable.objects.filter(product__hidden=False, product__state=StateEnum.available)\
+                    .values('title')\
+                    .annotate(first_id=Min('product__id'))\
+                    .values_list('first_id', flat=True)
+                unique_ids.update(list(collectable_first_ids))
+
+            if unique_ids:
+                self.queryset = self.queryset.filter(id__in=list(unique_ids))
         # Support a `limit` query param to cap returned items (safe, senior-friendly)
         limit_param = self.request.query_params.get('limit')
         if limit_param is not None:
@@ -117,9 +162,11 @@ class ProductViewSet(viewsets.ModelViewSet, Throttling):
                 if limit < 0:
                     limit = 0
                 limit = min(limit, MAX_LIMIT)
-                return self.queryset[:limit]
+                # Ensure distinct before slicing to avoid duplicate rows
+                return self.queryset.distinct()[:limit]
 
-        return self.queryset
+        # Ensure distinct results before returning to avoid duplicates caused by joins
+        return self.queryset.distinct()
 
     def retrieve(self, request, *args, **kwargs):
         self.queryset = Product.objects.all()
