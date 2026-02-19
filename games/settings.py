@@ -73,6 +73,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://www.store.readygamescr.com",
 
     # Testing origins
+    "http://localhost:3000",
     "http://localhost:5173",
     "https://readygames-store.vercel.app",
 ]
