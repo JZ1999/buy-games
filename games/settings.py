@@ -68,6 +68,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://readygamescr.com",
     "https://www.readygamescr.com",
     "https://ready-games-ui.vercel.app",
+    "https://ready-games-ui-rose.vercel.app",
     "https://store.readygamescr.com",
     "https://www.store.readygamescr.com",
 

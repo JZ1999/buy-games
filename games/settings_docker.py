@@ -68,6 +68,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://www.readygamescr.com",
     "http://localhost:3000",
     "https://ready-games-ui.vercel.app",
+    "https://ready-games-ui-rose.vercel.app",
     "https://readygames.vercel.app",
     "http://localhost:5173"
 ]
