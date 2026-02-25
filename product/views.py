@@ -29,7 +29,7 @@ from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework import filters, status
 from django.http import JsonResponse, HttpResponse
-from django.db.models.functions import Cast, TruncMonth, Row_number
+from django.db.models.functions import Cast, TruncMonth, RowNumber
 
 
 class StandardResultsSetPagination(PageNumberPagination):
@@ -124,7 +124,7 @@ class ProductViewSet(viewsets.ModelViewSet, Throttling):
             accessory_ids = Accessory.objects.filter(product__in=self.queryset)\
                 .annotate(
                     rn=Window(
-                        expression=Row_number(),
+                        expression=RowNumber(),
                         partition_by=['title', 'console'],
                         order_by=['product_id']
                     )
@@ -136,7 +136,7 @@ class ProductViewSet(viewsets.ModelViewSet, Throttling):
             videogame_ids = VideoGame.objects.filter(product__in=self.queryset)\
                 .annotate(
                     rn=Window(
-                        expression=Row_number(),
+                        expression=RowNumber(),
                         partition_by=['title', 'console'],
                         order_by=['product_id']
                     )
@@ -148,7 +148,7 @@ class ProductViewSet(viewsets.ModelViewSet, Throttling):
             console_ids = Console.objects.filter(product__in=self.queryset)\
                 .annotate(
                     rn=Window(
-                        expression=Row_number(),
+                        expression=RowNumber(),
                         partition_by=['title'],
                         order_by=['product_id']
                     )
@@ -160,7 +160,7 @@ class ProductViewSet(viewsets.ModelViewSet, Throttling):
             collectable_ids = Collectable.objects.filter(product__in=self.queryset)\
                 .annotate(
                     rn=Window(
-                        expression=Row_number(),
+                        expression=RowNumber(),
                         partition_by=['title'],
                         order_by=['product_id']
                     )
