@@ -90,6 +90,7 @@ class SaleInlineForm(forms.ModelForm):
         if self.instance and self.instance.id:
             # Set the custom value based on the parent object (obj)
             self.fields['receipt_products'].initial = self._receipt_products(self.instance)
+        self._manage_voucher_field_visibility()
 
     def format_product_string(self, product: Product):
         product_url = reverse('admin:product_product_change', args=[product.pk])
@@ -103,3 +104,89 @@ class SaleInlineForm(forms.ModelForm):
     def _receipt_products(self, obj: Sale):
         products_string = [self.format_product_string(product) for product in obj.products.all()]
         return mark_safe(f'<ul>{"".join(products_string)}</ul>')
+
+    def _requires_voucher(self):
+        """Check if voucher is required based on online_payment status."""
+        if not self.instance or not self.instance.id:
+            return False
+        return self.instance.platform == 'online'
+
+    def _manage_voucher_field_visibility(self):
+        """Show/hide voucher field based on online_payment and payment_method."""
+        if 'voucher' not in self.fields:
+            return
+
+        if self._requires_voucher():
+            # Show and set as required; accept PDFs and images for UX
+            self.fields['voucher'].required = True
+            self.fields['voucher'].widget = forms.FileInput(attrs={
+                'accept': 'application/pdf,image/*'
+            })
+        else:
+            # Hide voucher field using HiddenInput
+            self.fields['voucher'].required = False
+            self.fields['voucher'].widget = forms.HiddenInput()
+
+    def clean(self):
+        """Validate that voucher is provided when required."""
+        cleaned_data = super().clean()
+        
+        if self._requires_voucher() and not cleaned_data.get('voucher'):
+            self.add_error(
+                'voucher',
+                'Payment voucher is required for online payments with card or transfer methods.'
+            )
+        
+        return cleaned_data
+
+
+class SaleAdminForm(forms.ModelForm):
+    """
+    Custom form for Sale admin that conditionally displays voucher field.
+    Voucher is only shown when:
+    - platform is 'online'
+    - payment_method is 'card' or 'transfer'
+    """
+    
+    class Meta:
+        model = Sale
+        fields = '__all__'
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._manage_voucher_field_visibility()
+    
+    def _requires_voucher(self):
+        """Check if voucher is required based on online_payment status."""
+        if not self.instance or not self.instance.id:
+            return False
+        return self.instance.platform == 'online'
+    
+    def _manage_voucher_field_visibility(self):
+        """Show/hide voucher field based on platform and payment_method."""
+        if 'voucher' not in self.fields:
+            return
+
+        if self._requires_voucher():
+            # Show and set as required; accept PDFs and images for UX
+            self.fields['voucher'].required = True
+            self.fields['voucher'].widget = forms.FileInput(attrs={
+                'accept': 'application/pdf,image/*'
+            })
+            self.fields['voucher'].help_text = 'PDF or image of the payment voucher'
+        else:
+            # Hide voucher field using HiddenInput
+            self.fields['voucher'].required = False
+            self.fields['voucher'].widget = forms.HiddenInput()
+
+    def clean(self):
+        """Validate that voucher is provided when required."""
+        cleaned_data = super().clean()
+        
+        if self._requires_voucher() and not cleaned_data.get('voucher'):
+            self.add_error(
+                'voucher',
+                'Payment voucher is required for online payments with card or transfer methods.'
+            )
+        
+        return cleaned_data

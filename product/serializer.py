@@ -203,6 +203,27 @@ class GenerateBillSerializer(serializers.Serializer):
 
     online_payment = serializers.BooleanField(required=False, default=False)
     onvo_pay_payment_intent_id = serializers.CharField(required=False, default="")
+    voucher = serializers.FileField(required=False, allow_null=True)
+
+    def validate_voucher_requirements(self, online_payment, voucher):
+        """
+        Validate that voucher is provided when online_payment is True.
+        """
+        if online_payment and not voucher:
+            raise serializers.ValidationError(
+                "Voucher is required for online payments."
+            )
+
+    def validate(self, data):
+        """
+        Custom validation for voucher requirements.
+        """
+        online_payment = data.get('online_payment', False)
+        voucher = data.get('voucher')
+        
+        self.validate_voucher_requirements(online_payment, voucher)
+        
+        return data
 
     def __getattr__(self, item):
         """

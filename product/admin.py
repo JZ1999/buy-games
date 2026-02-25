@@ -23,7 +23,7 @@ from helpers.payment import formatted_number, PaymentMethodEnum
 from possimplified.models import Food
 from product.filters import SoldFilter, TypeFilter, ConsoleTitleFilter, BelowThreshHoldFilter, DuplicatesFilter, \
     ToBeShippedFilter, PaymentPendingFilter, WeekdayFilter, WithoutImageFilter, UserSalesFilter
-from product.forms import SaleInlineForm, ProductAdminForm
+from product.forms import SaleInlineForm, ProductAdminForm, SaleAdminForm
 from product.models import Product, Collectable, Console, VideoGame, Accessory, Report, Sale, Log, \
     StateEnum, Expense, Payment, Tag, SaleTypeEnum, Replacement
 from django.utils.html import format_html
@@ -404,6 +404,7 @@ class ReportAdmin(admin.ModelAdmin):
 
 class SaleAdmin(admin.ModelAdmin):
     model = Sale
+    form = SaleAdminForm
 
     exclude = (
         'products',
@@ -439,6 +440,32 @@ class SaleAdmin(admin.ModelAdmin):
             sale = self.get_object(request, object_id)
             extra_context['sale'] = sale
         return super().changeform_view(request, object_id, form_url, extra_context=extra_context)
+
+    def get_readonly_fields(self, request, obj=None):
+        """Include a download link for voucher when one exists."""
+        fields = list(self.readonly_fields)
+        if obj and getattr(obj, 'voucher', None):
+            fields.append('voucher_link')
+        return fields
+
+    def get_exclude(self, request, obj=None):
+        """Exclude the editable `voucher` field when a voucher is already set so only the link shows."""
+        exclude = list(self.exclude) if self.exclude else []
+        if obj and getattr(obj, 'voucher', None):
+            if 'voucher' not in exclude:
+                exclude.append('voucher')
+        return tuple(exclude)
+
+    def voucher_link(self, obj: Sale):
+        if not obj.voucher:
+            return "N/A"
+        try:
+            url = obj.voucher.url
+        except Exception:
+            return "N/A"
+        return format_html('<a href="{}" target="_blank">Download voucher</a>', url)
+
+    voucher_link.short_description = 'Voucher'
 
     def format_product_string(self, product: Product):
         product_url = reverse('admin:product_product_change', args=[product.pk])

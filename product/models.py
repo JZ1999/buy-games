@@ -775,6 +775,12 @@ class Sale(models.Model):
                                related_name="purchases")
 
     onvo_pay_payment_intent_id = models.CharField(max_length=100, null=True, blank=True)
+    voucher = models.FileField(
+        upload_to='sales/vouchers/',
+        null=True,
+        blank=True,
+        help_text='Payment voucher (PDF or image) for online payments'
+    )
 
     def __str__(self):
         if not self.report:

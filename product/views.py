@@ -6,7 +6,7 @@ from io import BytesIO
 from tempfile import NamedTemporaryFile
 from PIL import Image, ImageDraw, ImageFont
 
-from django.db.models import Sum, Count, IntegerField, Q, Case, When, Min
+from django.db.models import Sum, Count, IntegerField, Q, Case, When, Min, Window
 from openpyxl.styles import Font
 from openpyxl.utils import get_column_letter
 from openpyxl.workbook import Workbook
@@ -29,7 +29,7 @@ from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework import filters, status
 from django.http import JsonResponse, HttpResponse
-from django.db.models.functions import Cast, TruncMonth
+from django.db.models.functions import Cast, TruncMonth, Row_number
 
 
 class StandardResultsSetPagination(PageNumberPagination):
@@ -114,38 +114,60 @@ class ProductViewSet(viewsets.ModelViewSet, Throttling):
             if "collectable" in product_types:
                 self.queryset = self.queryset.filter(collectable__isnull=False)
 
-        # Deduplicate similar/copy products by selecting one representative per additional-info group.
-        # Use the already-filtered `self.queryset` to limit work and keep queries small.
+        # Keep up to 5 duplicates per product group using efficient window functions.
+        # Rank products within each (type, variant) group by product ID, keep ranks 1-5.
         types_to_check = product_types if product_types else ["accessory", "videogame", "console", "collectable"]
         unique_ids = set()
+        max_duplicates = 5
 
         if "accessory" in types_to_check:
-            accessory_first_ids = Accessory.objects.filter(product__in=self.queryset)\
-                .values('title', 'console')\
-                .annotate(first_id=Min('product__id'))\
-                .values_list('first_id', flat=True)
-            unique_ids.update(list(accessory_first_ids))
+            accessory_ids = Accessory.objects.filter(product__in=self.queryset)\
+                .annotate(
+                    rn=Window(
+                        expression=Row_number(),
+                        partition_by=['title', 'console'],
+                        order_by=['product_id']
+                    )
+                ).filter(rn__lte=max_duplicates)\
+                .values_list('product_id', flat=True)
+            unique_ids.update(list(accessory_ids))
 
         if "videogame" in types_to_check:
-            videogame_first_ids = VideoGame.objects.filter(product__in=self.queryset)\
-                .values('title', 'console')\
-                .annotate(first_id=Min('product__id'))\
-                .values_list('first_id', flat=True)
-            unique_ids.update(list(videogame_first_ids))
+            videogame_ids = VideoGame.objects.filter(product__in=self.queryset)\
+                .annotate(
+                    rn=Window(
+                        expression=Row_number(),
+                        partition_by=['title', 'console'],
+                        order_by=['product_id']
+                    )
+                ).filter(rn__lte=max_duplicates)\
+                .values_list('product_id', flat=True)
+            unique_ids.update(list(videogame_ids))
 
         if "console" in types_to_check:
-            console_first_ids = Console.objects.filter(product__in=self.queryset)\
-                .values('title')\
-                .annotate(first_id=Min('product__id'))\
-                .values_list('first_id', flat=True)
-            unique_ids.update(list(console_first_ids))
+            console_ids = Console.objects.filter(product__in=self.queryset)\
+                .annotate(
+                    rn=Window(
+                        expression=Row_number(),
+                        partition_by=['title'],
+                        order_by=['product_id']
+                    )
+                ).filter(rn__lte=max_duplicates)\
+                .values_list('product_id', flat=True)
+            unique_ids.update(list(console_ids))
 
         if "collectable" in types_to_check:
-            collectable_first_ids = Collectable.objects.filter(product__in=self.queryset)\
-                .values('title')\
-                .annotate(first_id=Min('product__id'))\
-                .values_list('first_id', flat=True)
-            unique_ids.update(list(collectable_first_ids))
+            collectable_ids = Collectable.objects.filter(product__in=self.queryset)\
+                .annotate(
+                    rn=Window(
+                        expression=Row_number(),
+                        partition_by=['title'],
+                        order_by=['product_id']
+                    )
+                ).filter(rn__lte=max_duplicates)\
+                .values_list('product_id', flat=True)
+            unique_ids.update(list(collectable_ids))
+
 
         if unique_ids:
             self.queryset = self.queryset.filter(id__in=list(unique_ids))
